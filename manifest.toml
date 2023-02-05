@@ -1,7 +1,7 @@
 manifest_version = 1
 
 [module]
-name = "Tasks"
+name = "BreadcordTasks"
 description = "Tasks"
 version = "1.0.0"
 license = "GNU GPLv3"
