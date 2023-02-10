@@ -101,21 +101,19 @@ class BreadcordTasks(breadcord.module.ModuleCog):
         ).fetchall()
 
         for task_due_time, author_id, channel_id, task_content in response:
+            author = await self.bot.fetch_user(author_id)
+
+            try:
+                channel = await self.bot.fetch_channel(channel_id)
+            except discord.Forbidden:
+                channel = author.dm_channel
+
+            embed = discord.Embed(title=f"⏰ You set a reminder for <t:{task_due_time}>", description=task_content)
+            await channel.send(author.mention, embed=embed)
             self.cursor.execute(
                 "DELETE FROM tasks WHERE task_due_time = ? AND author_id = ? AND channel_id = ? AND task_content = ?",
                 (task_due_time, author_id, channel_id, task_content),
             )
-
-            try:
-                channel = await self.bot.fetch_channel(channel_id)
-                author = await self.bot.fetch_user(author_id)
-            except discord.Forbidden:
-                self.logger.warning(f"Cannot access channel {channel_id}, deleting reminder from database")
-                self.connection.commit()
-                continue
-
-            embed = discord.Embed(title=f"⏰ You set a reminder for <t:{task_due_time}>", description=task_content)
-            await channel.send(author.mention, embed=embed)
             self.connection.commit()
 
     @breadcord.module.ModuleCog.listener()
