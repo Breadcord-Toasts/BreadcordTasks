@@ -36,9 +36,9 @@ class RemindModal(discord.ui.Modal, title="Register reminder"):
 
 
 class BreadcordTasks(breadcord.module.ModuleCog):
-    def __init__(self, name: str | None = None) -> None:
-        super().__init__(name)
-        self.module_settings = self.bot.settings.BreadcordTasks
+    def __init__(self, module_id: str):
+        super().__init__(module_id)
+        self.module_settings = self.bot.settings.breadcord_tasks
         self.connection = sqlite3.connect(self.module.storage_path / "tasks.db")
         self.cursor = self.connection.cursor()
         self.cursor.execute(
@@ -61,7 +61,7 @@ class BreadcordTasks(breadcord.module.ModuleCog):
 
         self.check_reminds.start()
 
-    @app_commands.command()
+    @app_commands.command(description="Reminds you about something in some amount of time")
     async def remind(self, interaction: discord.Interaction) -> None:
         modal = RemindModal()
         await interaction.response.send_modal(modal)
@@ -138,7 +138,7 @@ class BreadcordTasks(breadcord.module.ModuleCog):
         )
         self.connection.commit()
 
-    @app_commands.command()
+    @app_commands.command(description="Sends a list of your bookmarked messages.")
     async def bookmarks(self, interaction: discord.Interaction) -> None:
         bookmarks = self.cursor.execute(
             "SELECT bookmarked_message_id, bookmarked_message_channel_id, bookmarked_message_guild_id, added_at "
@@ -164,4 +164,4 @@ class BreadcordTasks(breadcord.module.ModuleCog):
 
 
 async def setup(bot: breadcord.Bot):
-    await bot.add_cog(BreadcordTasks())
+    await bot.add_cog(BreadcordTasks("breadcord_tasks"))
