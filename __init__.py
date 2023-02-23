@@ -38,7 +38,7 @@ class RemindModal(discord.ui.Modal, title="Register reminder"):
 class BreadcordTasks(breadcord.module.ModuleCog):
     def __init__(self, module_id: str):
         super().__init__(module_id)
-        self.module_settings = self.bot.settings.breadcord_tasks
+        self.module_settings = self.bot.settings.get_child(module_id)
         self.connection = sqlite3.connect(self.module.storage_path / "tasks.db")
         self.cursor = self.connection.cursor()
         self.cursor.execute(
