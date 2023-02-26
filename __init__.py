@@ -61,6 +61,9 @@ class BreadcordTasks(breadcord.module.ModuleCog):
 
         self.check_reminds.start()
 
+    def cog_unload(self):
+        self.check_reminds.cancel()
+
     @app_commands.command(description="Reminds you about something in some amount of time")
     async def remind(self, interaction: discord.Interaction) -> None:
         modal = RemindModal()
