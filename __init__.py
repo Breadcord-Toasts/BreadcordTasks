@@ -38,7 +38,6 @@ class RemindModal(discord.ui.Modal, title="Register reminder"):
 class BreadcordTasks(breadcord.module.ModuleCog):
     def __init__(self, module_id: str):
         super().__init__(module_id)
-        self.module_settings = self.bot.settings.get_child(module_id)
         self.connection = sqlite3.connect(self.module.storage_path / "tasks.db")
         self.cursor = self.connection.cursor()
         self.cursor.execute(
@@ -121,7 +120,7 @@ class BreadcordTasks(breadcord.module.ModuleCog):
 
     @breadcord.module.ModuleCog.listener()
     async def on_raw_reaction_add(self, reaction: discord.RawReactionActionEvent) -> None:
-        if str(reaction.emoji) not in self.module_settings.bookmark_emojis.value:
+        if str(reaction.emoji) not in selfsettings.bookmark_emojis.value:
             return
         self.cursor.execute(
             "INSERT INTO bookmarks VALUES (?, ?, ?, ?, ?)",
@@ -137,7 +136,7 @@ class BreadcordTasks(breadcord.module.ModuleCog):
 
     @breadcord.module.ModuleCog.listener()
     async def on_raw_reaction_remove(self, reaction: discord.RawReactionActionEvent) -> None:
-        if str(reaction.emoji) not in self.module_settings.bookmark_emojis.value:
+        if str(reaction.emoji) not in selfsettings.bookmark_emojis.value:
             return
         self.cursor.execute(
             "DELETE FROM bookmarks WHERE bookmarked_message_id = ? AND bookmarker = ?",
