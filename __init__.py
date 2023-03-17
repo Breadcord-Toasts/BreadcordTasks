@@ -120,7 +120,7 @@ class BreadcordTasks(breadcord.module.ModuleCog):
 
     @breadcord.module.ModuleCog.listener()
     async def on_raw_reaction_add(self, reaction: discord.RawReactionActionEvent) -> None:
-        if str(reaction.emoji) not in selfsettings.bookmark_emojis.value:
+        if str(reaction.emoji) not in self.settings.bookmark_emojis.value:
             return
         self.cursor.execute(
             "INSERT INTO bookmarks VALUES (?, ?, ?, ?, ?)",
@@ -136,7 +136,7 @@ class BreadcordTasks(breadcord.module.ModuleCog):
 
     @breadcord.module.ModuleCog.listener()
     async def on_raw_reaction_remove(self, reaction: discord.RawReactionActionEvent) -> None:
-        if str(reaction.emoji) not in selfsettings.bookmark_emojis.value:
+        if str(reaction.emoji) not in self.settings.bookmark_emojis.value:
             return
         self.cursor.execute(
             "DELETE FROM bookmarks WHERE bookmarked_message_id = ? AND bookmarker = ?",
