@@ -1,3 +1,8 @@
 # These are the emojis the bot will look for
 # These can also be custom emojis, not just unicode emojis
 bookmark_emojis = ["🔖"]
+
+# If invalid reminders (reminders that cause some sort of error) should be deleted
+# ⚠️ This will cause PERMANENT loss of reminder data, be careful!
+delete_invalid_reminders = false
+

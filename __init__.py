@@ -1,6 +1,7 @@
 import random
 import sqlite3
 import time
+from collections import namedtuple
 from datetime import datetime, timedelta
 
 import discord
@@ -11,19 +12,20 @@ import breadcord
 
 
 class RemindModal(discord.ui.Modal, title="Register reminder"):
-    time = discord.ui.TextInput(label="In how long you should be reminded", placeholder="1d 12h 30m")
+    time = discord.ui.TextInput(
+        label="In how long you should be reminded",
+        placeholder="1d 12h 30m"
+    )
     content = discord.ui.TextInput(
         label="Content",
         style=discord.TextStyle.paragraph,
         min_length=1,
         max_length=4000,
-        placeholder=random.choice(
-            [
-                "Remember to feed the ducks",
-                "Remember to take the cat for a walk",
-                "Remember to take the bread out of the oven",
-            ]
-        ),
+        placeholder=random.choice([
+            "Remember to feed the ducks",
+            "Remember to take the cat for a walk",
+            "Remember to take the bread out of the oven",
+        ])
     )
 
     def __init__(self) -> None:
@@ -69,54 +71,73 @@ class BreadcordTasks(breadcord.module.ModuleCog):
         await interaction.response.send_modal(modal)
         await modal.wait()
 
-        allowed_letters = ["d", "h", "m", "s"]
-        time_dict = dict.fromkeys(allowed_letters, 0)
+        time_dict = dict.fromkeys(["d", "h", "m", "s"], 0)
         for time_segment in str(modal.time).strip().split():
             try:
                 time_dict[time_segment[-1]] += int(time_segment[:-1])
             except (KeyError, ValueError):
-                return await modal.interaction.response.send_message("Invalid time passed.", ephemeral=True)
+                await modal.interaction.response.send_message("Invalid time passed.", ephemeral=True)
+                return
 
-        now = datetime.now()
-        then = now + timedelta(
+        remind_at = datetime.now() + timedelta(
             days=time_dict["d"],
             hours=time_dict["h"],
             minutes=time_dict["m"],
             seconds=time_dict["s"],
         )
-        then_timestamp = int(time.mktime(then.timetuple()))
+        remind_at_timestamp = int(time.mktime(remind_at.timetuple()))
 
         self.cursor.execute(
             "INSERT INTO tasks VALUES (?, ?, ?, ?)",
-            (then_timestamp, interaction.user.id, interaction.channel.id, str(modal.content)),
+            (remind_at_timestamp, interaction.user.id, interaction.channel.id, str(modal.content)),
         )
         self.connection.commit()
         await modal.interaction.response.send_message(
-            f"Reminder set for <t:{then_timestamp}> (<t:{then_timestamp}:R>)", ephemeral=True
+            f"Reminder set for <t:{remind_at_timestamp}> (<t:{remind_at_timestamp}:R>)",
+            ephemeral=True
         )
 
     @tasks.loop(seconds=30.0)
     async def check_reminds(self) -> None:
-        now = int(time.mktime(datetime.now().timetuple()))
+        current_timestamp = int(time.mktime(datetime.now().timetuple()))
         response = self.cursor.execute(
-            "SELECT task_due_time, author_id, channel_id, task_content FROM tasks WHERE task_due_time < ?", (now,)
+            "SELECT task_due_time, author_id, channel_id, task_content FROM tasks WHERE task_due_time <= ?",
+            (current_timestamp,)
         ).fetchall()
 
-        for task_due_time, author_id, channel_id, task_content in response:
-            author = await self.bot.fetch_user(author_id)
-
-            try:
-                channel = await self.bot.fetch_channel(channel_id)
-            except discord.Forbidden:
-                channel = author.dm_channel
-
-            embed = discord.Embed(title=f"⏰ You set a reminder for <t:{task_due_time}>", description=task_content)
-            await channel.send(author.mention, embed=embed)
+        def delete_task(due_time, author_id, channel_id, content):
             self.cursor.execute(
                 "DELETE FROM tasks WHERE task_due_time = ? AND author_id = ? AND channel_id = ? AND task_content = ?",
-                (task_due_time, author_id, channel_id, task_content),
+                (due_time, author_id, channel_id, content),
             )
             self.connection.commit()
+
+        exception = namedtuple("Exception", ["due_time", "author_id", "channel_id", "content", "error"])
+        error_backlog = []
+        for task_due_time, task_author_id, task_channel_id, task_content in response:
+            # noinspection PyBroadException
+            try:
+                author = await self.bot.fetch_user(task_author_id)
+
+                try:
+                    channel = await self.bot.fetch_channel(task_channel_id)
+                except discord.Forbidden:
+                    channel = author
+
+                embed = discord.Embed(title=f"⏰ You set a reminder for <t:{task_due_time}>", description=task_content)
+                await channel.send(author.mention, embed=embed)
+                delete_task(task_due_time, task_author_id, task_channel_id, task_content)
+            except Exception as error:
+                # We don't want exceptions causing tasks to not be handled, so we handle them after we're done
+                error_backlog.append(exception(task_due_time, task_author_id, task_channel_id, task_content, error))
+
+        for error in error_backlog:
+            self.logger.error(
+                f"Failed to send reminder for {error.due_time} to {error.author_id} in {error.channel_id} "
+                f"with content {error.content} due to {error.error}"
+            )
+            if bool(self.settings.delete_invalid_reminders.value):
+                delete_task(error.due_time, error.author_id, error.channel_id, error.content)
 
     @breadcord.module.ModuleCog.listener()
     async def on_raw_reaction_add(self, reaction: discord.RawReactionActionEvent) -> None:
@@ -150,7 +171,7 @@ class BreadcordTasks(breadcord.module.ModuleCog):
             "SELECT bookmarked_message_id, bookmarked_message_channel_id, bookmarked_message_guild_id, added_at "
             "FROM bookmarks "
             "WHERE bookmarker = ? "
-            "ORDER BY added_at ASC ",
+            "ORDER BY added_at ",
             (interaction.user.id,),
         ).fetchall()
         if not bookmarks:
