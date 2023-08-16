@@ -22,9 +22,12 @@ class RemindModal(discord.ui.Modal, title="Register reminder"):
         min_length=1,
         max_length=4000,
         placeholder=random.choice([
-            "Remember to feed the ducks",
-            "Remember to take the cat for a walk",
-            "Remember to take the bread out of the oven",
+            "Feed the ducks",
+            "Take the cat for a walk",
+            "Take the bread out of the oven",
+            "Hide the fact you've been jumping on the bed",
+            "Feed the pet rock",
+            "Perform an exorcism on the fridge",
         ])
     )
 
