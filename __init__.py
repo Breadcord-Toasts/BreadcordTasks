@@ -170,6 +170,7 @@ class BreadcordTasks(breadcord.module.ModuleCog):
 
     @commands.hybrid_command(description="Sends a list of your bookmarked messages.")
     async def bookmarks(self, ctx: commands.Context) -> None:
+        await ctx.defer(ephemeral=True)
         bookmarks = self.cursor.execute(
             "SELECT bookmarked_message_id, bookmarked_message_channel_id, bookmarked_message_guild_id, added_at "
             "FROM bookmarks "
