@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 import discord
 from discord import app_commands
-from discord.ext import tasks
+from discord.ext import tasks, commands
 
 import breadcord
 
@@ -168,17 +168,18 @@ class BreadcordTasks(breadcord.module.ModuleCog):
         )
         self.connection.commit()
 
-    @app_commands.command(description="Sends a list of your bookmarked messages.")
-    async def bookmarks(self, interaction: discord.Interaction) -> None:
+    @commands.hybrid_command(description="Sends a list of your bookmarked messages.")
+    async def bookmarks(self, ctx: commands.Context) -> None:
         bookmarks = self.cursor.execute(
             "SELECT bookmarked_message_id, bookmarked_message_channel_id, bookmarked_message_guild_id, added_at "
             "FROM bookmarks "
             "WHERE bookmarker = ? "
             "ORDER BY added_at ",
-            (interaction.user.id,),
+            (ctx.author.id,),
         ).fetchall()
         if not bookmarks:
-            return await interaction.response.send_message("You don't currently have any bookmarks.", ephemeral=True)
+            await ctx.reply("You don't currently have any bookmarks.", ephemeral=True)
+            return
 
         embed = discord.Embed(
             title="Your bookmarks",
@@ -190,7 +191,7 @@ class BreadcordTasks(breadcord.module.ModuleCog):
         )
         embed.set_footer(text="Sorted oldest first, newest last")
         # TODO: Pagintion
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await ctx.reply(embed=embed, ephemeral=True)
 
 
 async def setup(bot: breadcord.Bot):

@@ -4,6 +4,6 @@ manifest_version = 1
 name = "Breadcord Tasks"
 id = "breadcord_tasks"
 description = "Tasks"
-version = "1.0.0"
+version = "1.0.1"
 license = "GNU GPLv3"
 authors = ["Fripe"]
